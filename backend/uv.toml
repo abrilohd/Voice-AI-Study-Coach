@@ -1,0 +1,5 @@
+# UV configuration for OneDrive compatibility
+# OneDrive doesn't support hardlinks, so we use copy mode
+
+[pip]
+link-mode = "copy"
