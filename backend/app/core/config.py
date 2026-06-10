@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
+    dummy_hash: str = (
+        "$argon2id$v=19$m=65536,t=3,p=4$dummy$dummydummydummydummydummydummydummydummydummydummy"
+    )
+    environment: Literal["development", "production"] = "development"
 
     # LLM API Keys
     anthropic_api_key: str = ""

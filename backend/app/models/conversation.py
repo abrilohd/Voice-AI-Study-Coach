@@ -26,9 +26,7 @@ class Conversation(Base):
     is_voice: Mapped[bool] = mapped_column(default=False)
     token_count: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
+    updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="conversations")

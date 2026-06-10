@@ -1,10 +1,58 @@
+# Environment variables
 .env
 *.env
+!.env.example
+
+# Python cache and bytecode
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
 venv/
 .venv/
+env/
+ENV/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+*.cover
+
+# Linting and type checking
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node/Frontend
 node_modules/
 dist/
-.DS_Store
-.pytest_cache/
+build/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# UV/Python package manager
+uv.lock
+*.egg-info/
+.eggs/

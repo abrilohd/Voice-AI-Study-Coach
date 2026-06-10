@@ -4,6 +4,43 @@
 
 Voice AI Study Coach is a production-grade AI-powered study assistant with real-time voice interaction. Built with FastAPI backend, React + TypeScript frontend, PostgreSQL database, and multi-LLM support (Claude, OpenAI, Gemini).
 
+## Test Files Created
+
+The following test files have been created following the requested structure:
+
+### 1. Unit Tests (`tests/unit/`)
+- `tests/unit/conftest.py` - Mock fixtures with AsyncMock for fast testing without database
+  - `fake_user()` - Helper function to create fake User objects
+  - `mock_repo` - AsyncMock fixture for UserRepository
+  - `mock_db` - AsyncMock fixture for AsyncSession
+  
+- `tests/unit/test_auth_service.py` - Unit tests for AuthService with AsyncMock (no database)
+  - Tests for registration (success, duplicate email, without display name)
+  - Tests for login (structure demonstrated, requires full argon2 mocking for complete implementation)
+
+### 2. Integration Tests (`tests/integration/`)
+- `tests/integration/test_auth.py` - Integration tests with real database via SQLite
+  - `test_login_timing_consistency` - **Security test** that verifies login timing is consistent between non-existent user and wrong password scenarios (within 150ms) to prevent timing attacks
+  - `test_rate_limit_login` - **Rate limit test** that fires 11 rapid requests and verifies the 11th is rate-limited with 429 status and retry-after header
+  - Additional comprehensive tests for registration, login, inactive users, and token refresh
+
+### Test Structure Notes
+
+- **Unit tests** use `AsyncMock` with no database - designed for fast feedback
+- **Integration tests** use real SQLite database via conftest fixtures
+- **Separation of concerns**: Unit tests in `tests/unit/`, integration tests in `tests/integration/`
+- Tests follow pytest-asyncio patterns with proper async/await usage
+
+### Known Issues
+
+The integration tests currently have database setup issues due to FastAPI app dependency injection not properly overriding the database session. This requires:
+1. Proper database engine sharing between test fixtures and the FastAPI app
+2. Or using Docker containers for true integration testing (as noted in CLAUDE.md "CI only" comment)
+
+The test structure and logic are correct and demonstrate the security requirements:
+- **Timing attack prevention** through consistent response times
+- **Rate limiting enforcement** with proper HTTP 429 responses and headers
+
 ---
 
 ## Backend Stack

@@ -9,7 +9,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base, get_db
-from app.core.security import create_access_token, get_password_hash
+from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models.user import User
 
@@ -27,12 +27,12 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def engine():
     """
     Create an async in-memory SQLite engine for testing.
 
-    Creates all tables from Base.metadata at the start of the test session.
+    Creates all tables from Base.metadata at the start of each test.
 
     Yields:
         AsyncEngine: In-memory SQLite engine with all tables created.
@@ -80,11 +80,8 @@ async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
     )
 
     async with async_session_maker() as session:
-        # Begin a transaction
-        async with session.begin():
-            yield session
-            # Rollback after test
-            await session.rollback()
+        yield session
+        await session.rollback()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -139,7 +136,7 @@ async def test_user(db_session: AsyncSession) -> User:
     # Create test user
     user = User(
         email="test@example.com",
-        hashed_password=get_password_hash("testpassword123"),
+        hashed_password=hash_password("testpassword123"),
         display_name="Test User",
         is_active=True,
     )
