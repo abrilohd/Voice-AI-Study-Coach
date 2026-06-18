@@ -9,7 +9,6 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
@@ -68,7 +67,28 @@ app = FastAPI(
 
 # Add rate limiter to app state
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# Custom rate limit exceeded handler that includes Retry-After header
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """
+    Handle rate limit exceeded errors with Retry-After header.
+
+    Args:
+        request: The request that exceeded the rate limit
+        exc: The rate limit exceeded exception
+
+    Returns:
+        JSONResponse with 429 status and Retry-After header
+    """
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Rate limit exceeded"},
+        headers={"Retry-After": "900"},  # 15 minutes in seconds
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)  # type: ignore[arg-type]
 
 # CORS middleware
 app.add_middleware(

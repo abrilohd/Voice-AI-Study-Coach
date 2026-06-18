@@ -48,9 +48,7 @@ class TestAuthServiceRegister:
         mock_repo.create.assert_called_once()
         mock_db.commit.assert_called_once()
 
-    async def test_register_duplicate_email(
-        self, mock_repo: AsyncMock, mock_db: AsyncMock
-    ):
+    async def test_register_duplicate_email(self, mock_repo: AsyncMock, mock_db: AsyncMock):
         """Test registration fails when email already exists."""
         # Arrange
         test_email = "existing@example.com"
@@ -69,9 +67,7 @@ class TestAuthServiceRegister:
         mock_repo.create.assert_not_called()
         mock_db.commit.assert_not_called()
 
-    async def test_register_without_display_name(
-        self, mock_repo: AsyncMock, mock_db: AsyncMock
-    ):
+    async def test_register_without_display_name(self, mock_repo: AsyncMock, mock_db: AsyncMock):
         """Test registration succeeds without display name."""
         # Arrange
         test_email = "nodisplay@example.com"

@@ -1,17 +1,48 @@
 """Pytest configuration and fixtures for testing."""
 
 import asyncio
+import tempfile
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.database import Base, get_db
-from app.core.security import create_access_token, hash_password
-from app.main import app
-from app.models.user import User
+# Create a persistent test database file
+_temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+_test_db_path = Path(_temp_db.name)
+_temp_db.close()
+
+# Create test engine
+_test_engine = create_async_engine(
+    f"sqlite+aiosqlite:///{_test_db_path}",
+    echo=False,
+    pool_pre_ping=True,
+)
+
+# Create test session factory
+_test_session_maker = async_sessionmaker(
+    _test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+# Patch the app's database module BEFORE importing app.main
+import app.core.database as db_module  # noqa: E402
+
+db_module.engine = _test_engine
+db_module.AsyncSessionLocal = _test_session_maker
+
+# NOW import the app and other dependencies
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+
+from app.core.database import Base  # noqa: E402
+from app.core.security import create_access_token, hash_password  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.user import User  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -27,97 +58,57 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="function")
-async def engine():
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_database():
     """
-    Create an async in-memory SQLite engine for testing.
+    Create and clean up database tables for each test.
 
-    Creates all tables from Base.metadata at the start of each test.
+    This fixture automatically runs for every test function, creating all tables
+    at the start and dropping them at the end to ensure test isolation.
+
+    Also clears rate limiter state to prevent rate limits from affecting
+    subsequent tests.
 
     Yields:
-        AsyncEngine: In-memory SQLite engine with all tables created.
+        None
     """
-    # Create in-memory SQLite engine with aiosqlite driver
-    test_engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
-        echo=False,
-        pool_pre_ping=True,
-    )
+    # Clear rate limiter storage between tests
+    from app.core.dependencies import limiter
+
+    limiter.reset()
 
     # Create all tables
-    async with test_engine.begin() as conn:
+    async with _test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    yield test_engine
+    yield
 
-    # Clean up
-    async with test_engine.begin() as conn:
+    # Drop all tables
+    async with _test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
-    await test_engine.dispose()
-
 
 @pytest_asyncio.fixture(scope="function")
-async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
-    """
-    Create a database session for each test function.
-
-    Rolls back all changes after each test to ensure test isolation.
-
-    Args:
-        engine: The async SQLite engine fixture.
-
-    Yields:
-        AsyncSession: Database session for the test.
-    """
-    # Create session factory
-    async_session_maker = async_sessionmaker(
-        engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
-
-    async with async_session_maker() as session:
-        yield session
-        await session.rollback()
-
-
-@pytest_asyncio.fixture(scope="function")
-async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
     """
     Create an httpx AsyncClient for testing API endpoints.
 
-    Overrides the get_db dependency to use the test database session.
-
-    Args:
-        db_session: The test database session fixture.
+    The app will use the test database that was configured via DATABASE_URL
+    environment variable at module import time.
 
     Yields:
         AsyncClient: HTTP client configured for testing.
     """
-
-    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-        """Override get_db dependency to use test database."""
-        yield db_session
-
-    # Override the dependency
-    app.dependency_overrides[get_db] = override_get_db
-
-    # Create async client
+    # Create async client - app already uses test database
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as client:
         yield client
 
-    # Clean up dependency override
-    app.dependency_overrides.clear()
-
 
 @pytest_asyncio.fixture(scope="function")
-async def test_user(db_session: AsyncSession) -> User:
+async def test_user() -> User:
     """
     Create a test user in the database.
 
@@ -127,26 +118,27 @@ async def test_user(db_session: AsyncSession) -> User:
     - display_name: Test User
     - is_active: True
 
-    Args:
-        db_session: The test database session fixture.
-
     Returns:
         User: The created test user ORM object.
     """
-    # Create test user
-    user = User(
-        email="test@example.com",
-        hashed_password=hash_password("testpassword123"),
-        display_name="Test User",
-        is_active=True,
-    )
+    # Import AsyncSessionLocal from database module
+    from app.core.database import AsyncSessionLocal
 
-    # Add to database
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
+    async with AsyncSessionLocal() as session:
+        # Create test user
+        user = User(
+            email="test@example.com",
+            hashed_password=hash_password("testpassword123"),
+            display_name="Test User",
+            is_active=True,
+        )
 
-    return user
+        # Add to database
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+
+        return user
 
 
 @pytest_asyncio.fixture(scope="function")

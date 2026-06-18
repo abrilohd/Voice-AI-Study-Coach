@@ -52,3 +52,16 @@ class InvalidTokenError(Exception):
 
     def __init__(self) -> None:
         super().__init__("Invalid or expired refresh token")
+
+
+class ConversationNotFoundError(Exception):
+    """Raised when a conversation is not found or user doesn't have access."""
+
+    def __init__(self, conversation_id: UUID) -> None:
+        """Initialize exception with the conversation ID.
+
+        Args:
+            conversation_id: The UUID of the conversation that was not found
+        """
+        self.conversation_id = conversation_id
+        super().__init__(f"Conversation with ID {conversation_id} not found or access denied")

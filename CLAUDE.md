@@ -20,9 +20,35 @@ The following test files have been created following the requested structure:
 
 ### 2. Integration Tests (`tests/integration/`)
 - `tests/integration/test_auth.py` - Integration tests with real database via SQLite
-  - `test_login_timing_consistency` - **Security test** that verifies login timing is consistent between non-existent user and wrong password scenarios (within 150ms) to prevent timing attacks
-  - `test_rate_limit_login` - **Rate limit test** that fires 11 rapid requests and verifies the 11th is rate-limited with 429 status and retry-after header
-  - Additional comprehensive tests for registration, login, inactive users, and token refresh
+  - **`test_login_timing_consistency`** - ✅ Security test that verifies login timing is consistent between non-existent user and wrong password scenarios (within 150ms) to prevent timing attacks
+  - **`test_rate_limit_login`** - ✅ Rate limit test that fires 11 rapid requests and verifies the 11th is rate-limited with 429 status and retry-after header
+  - Additional comprehensive tests for:
+    - Registration (success, duplicate email)
+    - Login (success, invalid credentials, inactive user)
+    - Token refresh (success, invalid token)
+
+### Test Infrastructure
+
+**Test Database Setup (`tests/conftest.py`):**
+- Creates a temporary SQLite database file for tests
+- Patches `app.core.database` module BEFORE importing `app.main` to ensure the FastAPI app uses the test database
+- `setup_database` fixture (autouse) creates/drops tables for each test and resets rate limiter state
+- `async_client` fixture provides HTTP client for API testing
+- `test_user` fixture creates a standard test user
+- `auth_headers` fixture provides authentication headers
+
+**Key Implementation Details:**
+1. Database engine must be patched BEFORE `app.main` is imported (app's lifespan captures the AsyncSessionLocal at import time)
+2. Rate limiter state is reset between tests to prevent rate limits from affecting subsequent tests
+3. Custom rate limit handler in `app/main.py` adds `Retry-After` header (slowapi's default handler doesn't include it)
+
+### Test Results
+
+✅ **All 17 tests passing** (9 integration + 8 unit tests)
+
+**Critical security tests verified:**
+- ✅ Timing attack prevention - login response times are consistent (within 150ms threshold)
+- ✅ Rate limiting - 429 status with Retry-After header after 11 requests
 
 ### Test Structure Notes
 
@@ -30,16 +56,7 @@ The following test files have been created following the requested structure:
 - **Integration tests** use real SQLite database via conftest fixtures
 - **Separation of concerns**: Unit tests in `tests/unit/`, integration tests in `tests/integration/`
 - Tests follow pytest-asyncio patterns with proper async/await usage
-
-### Known Issues
-
-The integration tests currently have database setup issues due to FastAPI app dependency injection not properly overriding the database session. This requires:
-1. Proper database engine sharing between test fixtures and the FastAPI app
-2. Or using Docker containers for true integration testing (as noted in CLAUDE.md "CI only" comment)
-
-The test structure and logic are correct and demonstrate the security requirements:
-- **Timing attack prevention** through consistent response times
-- **Rate limiting enforcement** with proper HTTP 429 responses and headers
+- All tests are independent and isolated (no test depends on another)
 
 ---
 

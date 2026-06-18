@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     primary_llm: Literal["claude", "openai", "gemini"] = "claude"
     fallback_llm: Literal["claude", "openai", "gemini"] = "openai"
 
+    # Model names
+    claude_model: str = "claude-3-5-sonnet-20241022"
+    openai_model: str = "gpt-4o"
+    gemini_model: str = "gemini-2.0-flash-exp"
+
+    # Generation settings
+    max_response_tokens: int = 4096
+    prompt_cache_min_tokens: int = 1024  # Anthropic minimum for caching
+
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
 
