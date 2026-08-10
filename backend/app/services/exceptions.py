@@ -65,3 +65,42 @@ class ConversationNotFoundError(Exception):
         """
         self.conversation_id = conversation_id
         super().__init__(f"Conversation with ID {conversation_id} not found or access denied")
+
+
+class DocumentNotFoundError(Exception):
+    """Raised when a document is not found by ID or user doesn't have access."""
+
+    def __init__(self, document_id: UUID) -> None:
+        """Initialize exception with the missing document ID.
+
+        Args:
+            document_id: The UUID of the document that was not found
+        """
+        self.document_id = document_id
+        super().__init__(f"Document {document_id} not found or access denied")
+
+
+class DocumentProcessingError(Exception):
+    """Raised when document processing fails."""
+
+    def __init__(self, detail: str) -> None:
+        """Initialize exception with error details.
+
+        Args:
+            detail: Detailed error message
+        """
+        self.detail = detail
+        super().__init__(f"Processing failed: {detail}")
+
+
+class EmbeddingError(Exception):
+    """Raised when embedding generation fails."""
+
+    def __init__(self, detail: str) -> None:
+        """Initialize exception with error details.
+
+        Args:
+            detail: Detailed error message from embedding provider
+        """
+        self.detail = detail
+        super().__init__(f"Embedding generation failed: {detail}")

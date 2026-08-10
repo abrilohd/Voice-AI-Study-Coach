@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # RAG Configuration
+    voyage_api_key: str = ""
+    embedding_model: str = "voyage-3"
+    embedding_dimensions: int = 1536
+    max_rag_chunks: int = 5
+    rag_similarity_threshold: float = 0.70
+
     @field_validator("database_url", mode="after")
     @classmethod
     def validate_database_url(cls, v: str) -> str:

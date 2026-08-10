@@ -1,0 +1,3 @@
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: unrecognized arguments: ; if ($LASTEXITCODE -eq 0) { Write-Host \u2705 mypy --strict passes } else { Write-Host \u26a0\ufe0f mypy check needed - running full check... ; .venv\Scripts\python.exe app\repositories\document_repository.py }

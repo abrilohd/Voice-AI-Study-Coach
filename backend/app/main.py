@@ -13,6 +13,8 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
 from app.api.v1.router import api_router
+from app.api.v1.routers.chat_rag import router as chat_rag_router
+from app.api.v1.routers.documents import router as document_router
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.dependencies import limiter
@@ -119,6 +121,10 @@ async def add_request_id(request: Request, call_next: Any) -> Response:
 
 # Include API v1 router
 app.include_router(api_router, prefix="/api/v1")
+
+# Include document and RAG chat routers
+app.include_router(document_router, prefix="/api/v1", tags=["documents"])
+app.include_router(chat_rag_router, prefix="/api/v1", tags=["chat"])
 
 
 # Health check endpoint

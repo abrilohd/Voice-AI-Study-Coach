@@ -12,9 +12,11 @@ from app.core.database import AsyncSessionLocal
 from app.core.security import verify_access_token
 from app.models.user import User
 from app.repositories.conversation_repository import ConversationRepository
+from app.repositories.document_repository import DocumentRepository
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.services.chat_service import ChatService
+from app.services.rag_service import RAGService
 
 # Rate limiter instance using client IP address as key
 limiter = Limiter(key_func=get_remote_address)
@@ -205,3 +207,55 @@ async def get_chat_service(
         ```
     """
     return ChatService(conv_repo, db)
+
+
+async def get_document_repository(
+    db: AsyncSession = Depends(get_db),
+) -> DocumentRepository:
+    """
+    Dependency for document repository injection.
+
+    Args:
+        db: Database session from get_db dependency
+
+    Returns:
+        DocumentRepository: Repository instance for document operations
+
+    Example:
+        ```python
+        @router.get("/documents/{document_id}")
+        async def get_document(
+            document_id: UUID,
+            doc_repo: DocumentRepository = Depends(get_document_repository)
+        ):
+            return await doc_repo.get_by_id(document_id)
+        ```
+    """
+    return DocumentRepository(db)
+
+
+async def get_rag_service(
+    doc_repo: DocumentRepository = Depends(get_document_repository),
+    db: AsyncSession = Depends(get_db),
+) -> RAGService:
+    """
+    Dependency for RAG service injection.
+
+    Args:
+        doc_repo: Document repository from get_document_repository dependency
+        db: Database session from get_db dependency
+
+    Returns:
+        RAGService: Service instance for RAG operations
+
+    Example:
+        ```python
+        @router.post("/documents/upload")
+        async def upload_document(
+            file: UploadFile,
+            rag_service: RAGService = Depends(get_rag_service)
+        ):
+            return await rag_service.ingest_document(...)
+        ```
+    """
+    return RAGService(doc_repo, db)
