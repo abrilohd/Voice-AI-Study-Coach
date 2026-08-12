@@ -140,7 +140,7 @@ The following test files have been created following the requested structure:
 ---
 
 ## Dev Commands
-
+`
 ### Backend
 
 ```bash
@@ -304,6 +304,158 @@ class UserSchema(BaseModel):
 class UserSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 ```
+
+---
+
+## Development Progress
+
+### Day 4 Complete — RAG Pipeline Implementation ✅
+
+**Repository Layer (`app/repositories/document_repository.py`):**
+- `create()` - Create document records with metadata
+- `list()` - Paginated document listing with user filtering
+- `get()` - Retrieve single document by ID with ownership check
+- `update_status()` - Update document processing status (pending → processing → completed → failed)
+- `delete()` - Soft/hard delete with cascade to chunks
+- `create_chunks_bulk()` - Bulk insert document chunks with embeddings
+- `similarity_search()` - Cosine similarity search using pgvector with user-scoped filtering
+
+**Service Layer (`app/services/rag_service.py`):**
+- `ingest_document()` - End-to-end pipeline:
+  - Text extraction from uploaded files (PDF, DOCX, TXT)
+  - Recursive character-based chunking (512 tokens, 64 overlap)
+  - Batch embedding generation via Voyage AI
+  - Bulk database insert with transaction rollback on failure
+- `retrieve_chunks()` - Semantic search with configurable top-k and similarity threshold
+- `build_rag_context()` - Format retrieved chunks into LLM-ready context string
+
+**Domain Exceptions (`app/services/exceptions.py`):**
+- `DocumentNotFoundError` - Document doesn't exist or access denied
+- `DocumentAccessDeniedError` - User doesn't own the document
+- `DocumentProcessingError` - Extraction, chunking, or ingestion failure
+- `EmbeddingError` - Voyage AI API failure with retry logic
+
+**API Routes (`app/api/v1/routers/`):**
+- `POST /api/v1/documents/` - Upload document, trigger async ingestion
+- `GET /api/v1/documents/` - List user's documents with pagination
+- `GET /api/v1/documents/{id}` - Get single document details
+- `DELETE /api/v1/documents/{id}` - Delete document and all chunks
+- `POST /api/v1/chat/rag-stream` - RAG-enhanced chat with SSE streaming
+
+**Technical Implementation Details:**
+- **Embedding Model**: Voyage AI `voyage-3` (1536 dimensions)
+  - Document chunks use `input_type="document"` for indexing
+  - Query embeddings use `input_type="query"` for asymmetric retrieval
+- **Chunking Strategy**: 
+  - `RecursiveCharacterTextSplitter` with tiktoken-based length function
+  - 512 tokens per chunk with 64 token overlap for context preservation
+  - Language-aware splitting (code blocks, paragraphs, sentences)
+- **Vector Search**: 
+  - pgvector with `ivfflat` index (lists=100) for O(log n) search
+  - Cosine similarity distance metric (`<=>` operator)
+  - User-scoped filtering to prevent cross-user data leakage
+- **SSE Streaming**: 
+  - Real-time token streaming from LLM
+  - `[DONE]` event includes `sources[]` array with chunk metadata for transparency
+  - Client can display source citations alongside AI responses
+
+**Database Schema (`alembic/versions/57d5a2c4b3c5_*.py`):**
+```sql
+CREATE TABLE documents (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    file_size_bytes INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',  -- pending|processing|completed|failed
+    error_message TEXT,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE document_chunks (
+    id UUID PRIMARY KEY,
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    token_count INTEGER NOT NULL,
+    embedding vector(1536) NOT NULL,  -- pgvector type
+    metadata JSONB,
+    created_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX idx_chunks_embedding ON document_chunks 
+USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+CREATE INDEX idx_chunks_document_id ON document_chunks(document_id);
+```
+
+**Environment Variables Added (`.env.example`):**
+```bash
+# Voyage AI for embeddings
+VOYAGE_API_KEY=your_voyage_api_key_here
+
+# RAG Configuration
+CHUNK_SIZE=512
+CHUNK_OVERLAP=64
+EMBEDDING_MODEL=voyage-3
+EMBEDDING_DIMENSION=1536
+SIMILARITY_THRESHOLD=0.7
+TOP_K_CHUNKS=5
+```
+
+**Testing Status:**
+- ✅ Unit tests for `DocumentRepository` (mocked AsyncSession)
+- ✅ Unit tests for `RAGService` (mocked dependencies)
+- ✅ Integration tests for document upload/list/delete endpoints
+- ⏳ E2E test for full RAG pipeline (document upload → ingestion → query)
+
+---
+
+### Day 5 Options — Next Sprint
+
+**Option A: Frontend SSE Consumer + Document Upload UI (Recommended for Demo)**
+- **Goal**: Unblock end-to-end demo with working UI
+- **Tasks**:
+  1. Create `DocumentUploadModal` component with drag-and-drop
+  2. Implement SSE consumer with `EventSource` for streaming chat
+  3. Add source citation display with expandable chunk previews
+  4. Add document management page (list, delete, view status)
+  5. Add loading states for document processing status polling
+- **Why**: Backend RAG is complete but unusable without frontend
+- **Risk**: Low — mostly UI work with established patterns
+- **Time**: 1 day
+
+**Option B: Voice I/O — Real-time Speech Integration**
+- **Goal**: Enable hands-free voice interaction (core product differentiator)
+- **Tasks**:
+  1. Create `VoiceService` with Whisper STT integration
+  2. Integrate ElevenLabs TTS with streaming audio playback
+  3. Add WebSocket endpoint for bidirectional voice streaming
+  4. Implement push-to-talk UI with recording visualization
+  5. Add voice activity detection (VAD) for hands-free mode
+- **Why**: Voice is the primary differentiator vs. ChatGPT
+- **Risk**: Medium — WebSocket complexity, browser audio APIs
+- **Time**: 2 days
+
+**Option C: Background Task Queue for Async Processing**
+- **Goal**: Scale document ingestion for large files (>10MB)
+- **Tasks**:
+  1. Set up Inngest/ARQ task queue with Redis
+  2. Move `RAGService.ingest_document()` to background worker
+  3. Add WebSocket for real-time processing status updates
+  4. Implement retry logic with exponential backoff
+  5. Add admin dashboard for task monitoring
+- **Why**: Current sync ingestion blocks API for large documents
+- **Risk**: High — new infrastructure dependency, deployment complexity
+- **Time**: 2 days
+
+**Recommendation**: **Option A** (Frontend) → **Option B** (Voice) → **Option C** (Scale)
+
+**Rationale**:
+- Option A is a hard blocker for any demo/testing — no frontend means no validation
+- Option B delivers core product value (voice) once UI is working
+- Option C is optimization — only needed once we have real users uploading large files
 
 ---
 
