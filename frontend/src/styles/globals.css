@@ -1,0 +1,256 @@
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-mono/400.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+/* Palette — "Claude/GPT UX Standard" */
+    --color-bg:          #000000;  /* Main workspace area */
+    --color-surface:     #000000;  /* Main workspace area */
+    --color-surface-2:   #212121;  /* Input Box / Chat bubbles */
+    --color-border:      #212335;  /* Clean separation lines */
+    --color-accent:      #212121;    /* primary lioke gpt */
+    --color-accent-dim:  #6C8EF520; /* Tinted background hover state */
+    --color-text:        #E8EAF0;   /* High contrast reading text */
+    --color-text-muted:  #B4B4B4;   /* Secondary info / Timestamps */
+    --color-success:     #4ADE80;    /* System status green */
+    --color-warning:     #FBBF24;   /* System status yellow */
+    --color-error:       #F87171;   /* System status red */
+
+  /* Typography */
+  --font-display: 'Geist Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Geist Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', 'Courier New', monospace;
+
+  /* Spacing scale (base 4) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+}
+
+/* Base reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Scrollbar styling — thin, matches dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Typography defaults */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: var(--color-accent-dim);
+  color: var(--color-text);
+}
+
+/* Markdown content styling */
+.markdown-content {
+  line-height: 1.7;
+}
+
+.markdown-content p {
+  margin-bottom: var(--space-4);
+}
+
+.markdown-content h1 {
+  font-size: 1.875rem;
+  margin-top: var(--space-8);
+  margin-bottom: var(--space-4);
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-3);
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-3);
+}
+
+.markdown-content ul, .markdown-content ol {
+  margin-left: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+
+.markdown-content li {
+  margin-bottom: var(--space-2);
+}
+
+.markdown-content code {
+  background: var(--color-surface-2);
+  color: var(--color-accent);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875em;
+}
+
+.markdown-content pre {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  overflow-x: auto;
+  margin-bottom: var(--space-4);
+}
+
+.markdown-content pre code {
+  background: transparent;
+  padding: 0;
+  color: var(--color-text);
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: var(--space-4);
+  margin-left: 0;
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.markdown-content a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.markdown-content a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-4);
+}
+
+.markdown-content th,
+.markdown-content td {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.markdown-content th {
+  background: var(--color-surface-2);
+  font-weight: 600;
+}
+
+/* Loading animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Cursor blink animation for streaming */
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Spinner animation for loading states */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
