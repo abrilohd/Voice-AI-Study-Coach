@@ -1,4 +1,4 @@
-# 🎓 Voice AI Study Coach
+#  Voice AI Study Coach
 
 > **Production-ready AI tutor with multi-LLM support, voice I/O, RAG-ready architecture & zero provider lock-in**
 
@@ -9,7 +9,7 @@
 
 ---
 
-## 🌟 What This Does
+##  What This Does
 
 A **conversational AI study coach** that adapts to your learning style. Ask questions, get Socratic responses, take adaptive quizzes, and learn at your pace.
 
@@ -17,7 +17,7 @@ A **conversational AI study coach** that adapts to your learning style. Ask ques
 
 ---
 
-## ⚡ Quick Start
+##  Quick Start
 
 ### Backend Setup
 ```bash
@@ -42,22 +42,22 @@ npm install && npm run dev
 
 ---
 
-## 🔑 Features
+##  Features
 
-### 🎯 Core Learning
+###  Core Learning
 - **Conversational Tutoring** - Ask anything, get personalized explanations
 - **Socratic Method** - AI guides you to answers instead of just giving them
 - **Adaptive Quizzes** - MCQ quizzes that adapt to your knowledge level
 - **Study Sessions** - Track learning progress & session history
 - **Multi-subject Support** - Math, Science, History, Languages, and more
 
-### 🤖 AI Architecture
+###  AI Architecture
 - **Multi-LLM Support** - Claude, GPT-4, Gemini, or any OpenAI-compatible API
 - **Provider Agnostic** - Switch LLMs without redeploying
 - **Fallback Support** - Graceful degradation if primary LLM is down
 - **Cost Optimization** - Use budget models for simple queries
 
-### 🛠️ Tech Stack
+###  Tech Stack
 
 | Layer | Technology |
 |-------|------------|
@@ -70,7 +70,7 @@ npm install && npm run dev
 
 ---
 
-## 📡 API Endpoints
+##  API Endpoints
 
 ### Health & Status
 ```
@@ -99,7 +99,7 @@ POST /quiz/              # Generate adaptive MCQ quiz
 
 ---
 
-## 🎛️ Configuration
+##  Configuration
 
 ### Environment Variables
 ```env
@@ -127,7 +127,7 @@ FALLBACK_LLM=openai
 
 ---
 
-## 🚀 Deployment
+##  Deployment
 
 ### Deploy to Railway/Render
 ```bash
@@ -149,7 +149,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 cd backend && pytest tests/ -v
@@ -157,18 +157,18 @@ cd backend && pytest tests/ -v
 
 ---
 
-## 🔐 Security
+##  Security
 
-- ✅ JWT authentication
-- ✅ Rate limiting per user
-- ✅ Input validation (Pydantic)
-- ✅ SQL injection prevention
-- ✅ CORS configured
-- ✅ API keys never logged
+-  JWT authentication
+-  Rate limiting per user
+-  Input validation (Pydantic)
+-  SQL injection prevention
+-  CORS configured
+-  API keys never logged
 
 ---
 
-## 📚 Documentation
+##  Documentation
 
 - **[Backend Docs](./backend/README.md)** - Backend architecture
 - **[Frontend Guide](./frontend/README.md)** - Component structure
@@ -177,7 +177,7 @@ cd backend && pytest tests/ -v
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create feature branch (`git checkout -b feature/new-feature`)
@@ -187,17 +187,17 @@ cd backend && pytest tests/ -v
 
 ---
 
-## 📝 License
+##  License
 
 MIT License - see [LICENSE](LICENSE)
 
 ---
 
-## 💬 Support
+##  Support
 
-- 💬 **Issues:** [Report bugs](https://github.com/abrilohd/Voice-AI-Study-Coach/issues)
-- 💡 **Features:** [Request features](https://github.com/abrilohd/Voice-AI-Study-Coach/issues)
-- 📧 **Email:** abrsh067@gmail.com
+-  **Issues:** [Report bugs](https://github.com/abrilohd/Voice-AI-Study-Coach/issues)
+-  **Features:** [Request features](https://github.com/abrilohd/Voice-AI-Study-Coach/issues)
+-  **Email:** abrsh067@gmail.com
 
 ---
 

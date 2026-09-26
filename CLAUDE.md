@@ -1,4 +1,4 @@
-# Voice AI Study Coach — Project Context for AI Agents
+# Voice AI Study Coach - Project Context for AI Agents
 
 ## Project Overview
 
