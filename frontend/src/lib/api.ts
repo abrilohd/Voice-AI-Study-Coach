@@ -210,11 +210,11 @@ export async function uploadDocument(
     formData.append('description', payload.description);
   }
 
-  return api.upload<DocumentResponse>('/api/v1/documents/upload', formData);
+  return api.upload<DocumentResponse>('/api/v1/documents/', formData);
 }
 
 export async function listDocuments(): Promise<DocumentResponse[]> {
-  return api.get<DocumentResponse[]>('/api/v1/documents');
+  return api.get<DocumentResponse[]>('/api/v1/documents/');
 }
 
 export async function getDocument(id: string): Promise<DocumentResponse> {
@@ -303,7 +303,7 @@ export function streamRAGChat(
           try {
             const parsed = JSON.parse(data);
 
-            if (parsed.type === 'token') {
+            if (parsed.type === 'text') {
               onToken(parsed.content);
             } else if (parsed.type === 'done') {
               onDone({
