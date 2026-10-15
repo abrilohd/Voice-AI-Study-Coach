@@ -84,7 +84,7 @@ async def stream_rag_chat(
             # Extract last user message for retrieval query
             user_messages = [msg for msg in chat_request.messages if msg.role == "user"]
             if not user_messages:
-                error_msg = {'type': 'error', 'message': 'no user messages found'}
+                error_msg = {'type': 'error', 'error': 'no user messages found'}
                 yield f"data: {json.dumps(error_msg)}\n\n"
                 return
 
@@ -160,13 +160,15 @@ async def stream_rag_chat(
             total_tokens = input_tokens + output_tokens
             done_event = {
                 "type": "done",
-                "total_tokens": total_tokens,
-                "sources": sources,
+                "data": {
+                    "total_tokens": total_tokens,
+                    "sources": sources,
+                },
             }
             yield f"data: {json.dumps(done_event)}\n\n"
 
         except ConversationNotFoundError:
-            yield f"data: {json.dumps({'type': 'error', 'message': 'conversation not found'})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'error': 'conversation not found'})}\n\n"
 
         except asyncio.CancelledError:
             # Client disconnected - normal, re-raise to clean up
@@ -174,7 +176,7 @@ async def stream_rag_chat(
 
         except Exception as e:
             log.error("rag.stream.error", error=str(e), error_type=type(e).__name__)
-            yield f"data: {json.dumps({'type': 'error', 'message': 'internal error'})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'error': 'internal error'})}\n\n"
 
     return StreamingResponse(
         generate(),
