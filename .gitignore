@@ -58,3 +58,7 @@ build/
 uv.lock
 *.egg-info/
 .eggs/
+# Day logs and test scripts (not part of project structure)
+DAY_*_FIXES.md
+DAY_*_*.md
+test_day*.cmd
