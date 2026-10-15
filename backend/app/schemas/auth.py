@@ -39,7 +39,7 @@ class UserRegisterRequest(BaseModel):
 
     email: EmailStr = Field(
         description="User's email address (must be unique)",
-        examples=["alice@example.com"],
+        examples=["abebe@example.com"],
     )
     password: str = Field(
         description=(
@@ -52,7 +52,7 @@ class UserRegisterRequest(BaseModel):
     display_name: str | None = Field(
         default=None,
         description="Optional display name for the user",
-        examples=["Alice Johnson"],
+        examples=["Abebe Johnson"],
         max_length=100,
     )
 
@@ -103,7 +103,7 @@ class UserLoginRequest(BaseModel):
 
     email: EmailStr = Field(
         description="User's email address",
-        examples=["alice@example.com"],
+        examples=["abebe@example.com"],
     )
     password: str = Field(
         description="User's password",
@@ -142,12 +142,12 @@ class UserResponse(BaseModel):
     )
     email: str = Field(
         description="User's email address",
-        examples=["alice@example.com"],
+        examples=["abebe@example.com"],
     )
     display_name: str | None = Field(
         default=None,
         description="User's display name",
-        examples=["Alice Johnson"],
+        examples=["Abebe Johnson"],
     )
     is_active: bool = Field(
         description="Whether the user account is active",
