@@ -2,6 +2,8 @@
 .env
 *.env
 !.env.example
+.vscode
+/CLAUDE.md
 
 # Python cache and bytecode
 __pycache__/
