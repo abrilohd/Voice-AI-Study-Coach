@@ -50,7 +50,7 @@ class LLMRouter:
         """Initialize router with no clients (lazy-init pattern)."""
         self._anthropic: anthropic.Anthropic | None = None
         self._openai: openai.AsyncOpenAI | None = None
-        self._gemini: genai.Client | None = None  # type: ignore[name-defined,assignment]
+        self._gemini: genai.Client | None = None
 
     def _get_anthropic(self) -> anthropic.Anthropic:
         """Lazy-initialize Anthropic client.
@@ -82,7 +82,7 @@ class LLMRouter:
             self._openai = openai.AsyncOpenAI(api_key=settings.openai_api_key)
         return self._openai
 
-    def _get_gemini(self) -> genai.Client:  # type: ignore[name-defined,valid-type]
+    def _get_gemini(self) -> genai.Client:
         """Lazy-initialize Gemini client.
 
         Returns:
@@ -94,7 +94,7 @@ class LLMRouter:
         if self._gemini is None:
             if not settings.gemini_api_key:
                 raise ValueError("Gemini API key not configured. Set GEMINI_API_KEY in .env")
-            self._gemini = genai.Client(api_key=settings.gemini_api_key)  # type: ignore[attr-defined,assignment,misc]
+            self._gemini = genai.Client(api_key=settings.gemini_api_key)
         return self._gemini
 
     def _build_system_claude(self, system: str, use_cache: bool) -> str | list[dict[str, Any]]:
@@ -153,8 +153,8 @@ class LLMRouter:
             messages=messages,  # type: ignore[arg-type]
         )
 
-        async with stream:  # type: ignore[attr-defined,union-attr,misc]
-            async for event in stream:  # type: ignore[attr-defined,union-attr,misc]
+        async with stream:  # type: ignore[attr-defined]
+            async for event in stream:  # type: ignore[attr-defined]
                 # Text content chunks
                 if event.type == "content_block_delta":
                     if hasattr(event.delta, "text"):
@@ -186,12 +186,12 @@ class LLMRouter:
         # Prepend system message to messages list (OpenAI format)
         messages_with_system = [{"role": "system", "content": system}, *messages]
 
-        stream = await client.chat.completions.create(
+        stream = await client.chat.completions.create(  # type: ignore[call-overload]
             model=settings.openai_model,
             max_tokens=settings.max_response_tokens,
-            messages=messages_with_system,  # type: ignore[arg-type]
-            stream=True,  # type: ignore[arg-type]
-            stream_options={"include_usage": True},  # type: ignore[arg-type,typeddict-item,misc]
+            messages=messages_with_system,
+            stream=True,
+            stream_options={"include_usage": True},
         )
 
         async for chunk in stream:
@@ -235,7 +235,7 @@ class LLMRouter:
             for msg in messages
         ]
 
-        response = await model.generate_content_async(  # type: ignore[attr-defined,misc,call-arg]
+        response = await model.generate_content_async(
             gemini_messages,
             stream=True,
             generation_config=genai.GenerationConfig(  # type: ignore[attr-defined]
@@ -404,12 +404,12 @@ class LLMRouter:
             text = "".join(
                 block.text
                 for block in claude_response.content
-                if hasattr(block, "text")  # type: ignore[attr-defined]
+                if hasattr(block, "text")
             )
             return (
                 text,
-                claude_response.usage.input_tokens,  # type: ignore[attr-defined,misc]
-                claude_response.usage.output_tokens,  # type: ignore[attr-defined,misc]
+                claude_response.usage.input_tokens,
+                claude_response.usage.output_tokens,
             )
 
         elif selected_provider == "openai":
@@ -439,7 +439,7 @@ class LLMRouter:
                 }
                 for msg in messages
             ]
-            response = await model.generate_content_async(  # type: ignore[attr-defined,misc,call-arg]
+            response = await model.generate_content_async(
                 gemini_messages,
                 generation_config=genai.GenerationConfig(  # type: ignore[attr-defined]
                     max_output_tokens=settings.max_response_tokens

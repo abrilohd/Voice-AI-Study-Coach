@@ -129,9 +129,20 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Extract user email from token subject
-    email: str | None = payload.get("sub")
-    if not email:
+    # Extract user ID from token subject
+    user_id_str: str | None = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Convert string UUID to UUID object
+    try:
+        from uuid import UUID
+        user_id = UUID(user_id_str)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
@@ -139,7 +150,7 @@ async def get_current_user(
         )
 
     # Fetch user from database
-    user = await user_repo.get_by_email(email)
+    user = await user_repo.get_by_id(user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

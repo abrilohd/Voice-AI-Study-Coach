@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # RAG Configuration
     voyage_api_key: str = ""
     embedding_model: str = "voyage-3"
-    embedding_dimensions: int = 1536
+    embedding_dimensions: int = 1024  # voyage-3 produces 1024-dim embeddings
     max_rag_chunks: int = 5
     rag_similarity_threshold: float = 0.70
 

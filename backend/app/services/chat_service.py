@@ -75,7 +75,6 @@ class ChatService:
             ConversationNotFoundError: If conversation_id doesn't exist or user doesn't own it
         """
         # Step 1: Get or create conversation
-        conv_id: UUID
         if conversation_id is None:
             # Create new conversation - title from first message preview
             title = messages[-1]["content"][:50] + (
@@ -88,7 +87,7 @@ class ChatService:
                 llm_provider=provider or "claude",
                 is_voice=False,
             )
-            conv_id = conversation.id
+            conv_id: UUID = conversation.id  # type: ignore[assignment]
         else:
             # Get existing conversation with ownership check
             maybe_conversation = await self.conversation_repo.get_by_id(conversation_id, user_id)

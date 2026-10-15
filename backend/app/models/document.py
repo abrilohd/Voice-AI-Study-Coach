@@ -38,7 +38,9 @@ class Document(Base):
     filename: Mapped[str] = mapped_column(String(255))
     file_size_bytes: Mapped[int] = mapped_column()
     chunk_count: Mapped[int] = mapped_column(default=0)
-    status: Mapped[DocumentStatus] = mapped_column(default=DocumentStatus.PENDING)
+    status: Mapped[DocumentStatus] = mapped_column(
+        String(20), default=DocumentStatus.PENDING
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now()
@@ -63,7 +65,7 @@ class DocumentChunk(Base):
     chunk_index: Mapped[int] = mapped_column()
     content: Mapped[str] = mapped_column(Text)
     token_count: Mapped[int] = mapped_column()
-    embedding: Mapped[Vector | None] = mapped_column(Vector(1536), nullable=True)
+    embedding: Mapped[Vector | None] = mapped_column(Vector(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     # Relationships
