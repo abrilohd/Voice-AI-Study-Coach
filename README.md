@@ -129,23 +129,139 @@ FALLBACK_LLM=openai
 
 ##  Deployment
 
-### Deploy to Railway/Render
+This project is a strong fit for Azure Container Apps because it already uses a multi-service architecture: a FastAPI backend, a React frontend, and a PostgreSQL-backed data layer. For production, the recommended Azure pattern is to run each app in a separate container, push the images to Azure Container Registry, and connect them to an Azure-managed PostgreSQL database.
+
+### Prerequisites
+
+Before deploying, make sure you have:
+
+- Azure CLI installed and authenticated (`az login`)
+- Docker installed locally
+- An active Azure subscription
+- Application Dockerfiles ready for the backend and frontend
+
+### 1) Push Docker images to Azure Container Registry (ACR)
+
+Create a resource group and ACR first:
+
 ```bash
-# 1. Set environment variables in platform dashboard
-# 2. Connect your repository
-# 3. Set start command:
-uvicorn main:app --host 0.0.0.0 --port $PORT
+az login
+
+az group create \
+  --name study-coach-rg \
+  --location eastus
+
+az acr create \
+  --resource-group study-coach-rg \
+  --name mystudycoachregistry \
+  --sku Basic
 ```
 
-### Docker Deployment
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+Log in to the registry:
+
+```bash
+az acr login --name mystudycoachregistry
 ```
+
+Build and push the images:
+
+```bash
+docker build -t mystudycoachregistry.azurecr.io/backend:latest ./backend
+docker build -t mystudycoachregistry.azurecr.io/frontend:latest ./frontend
+
+docker push mystudycoachregistry.azurecr.io/backend:latest
+docker push mystudycoachregistry.azurecr.io/frontend:latest
+```
+
+If your project uses Docker Compose, you can also do:
+
+```bash
+docker compose build
+docker compose push
+```
+
+### 2) Create a managed PostgreSQL database
+
+Use Azure Database for PostgreSQL Flexible Server instead of running a database container in production:
+
+```bash
+az postgres flexible-server create \
+  --resource-group study-coach-rg \
+  --name studycoach-db-server \
+  --admin-user dbadmin \
+  --admin-password "YourStrongPassword123!" \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --storage-size 32 \
+  --version 15
+```
+
+Configure firewall rules to allow Azure services to reach the database:
+
+```bash
+az postgres flexible-server firewall-rule create \
+  --resource-group study-coach-rg \
+  --server-name studycoach-db-server \
+  --name AllowAzureServices \
+  --start-ip-address 0.0.0.0 \
+  --end-ip-address 0.0.0.0
+```
+
+### 3) Deploy to Azure Container Apps
+
+Create the environment:
+
+```bash
+az containerapp env create \
+  --name study-coach-env \
+  --resource-group study-coach-rg \
+  --location eastus
+```
+
+Deploy the backend container:
+
+```bash
+az containerapp create \
+  --name backend-service \
+  --resource-group study-coach-rg \
+  --environment study-coach-env \
+  --image mystudycoachregistry.azurecr.io/backend:latest \
+  --target-port 8000 \
+  --ingress external \
+  --registry-server mystudycoachregistry.azurecr.io \
+  --env-vars \
+    DATABASE_URL="postgresql://dbadmin:YourStrongPassword123!@studycoach-db-server.postgres.database.azure.com:5432/postgres?sslmode=require" \
+    PRIMARY_LLM="anthropic" \
+    FALLBACK_LLM="gemini" \
+    CLAUDE_API_KEY="your_key" \
+    OPENAI_API_KEY="your_key" \
+    GOOGLE_API_KEY="your_key"
+```
+
+Deploy the frontend container and set the frontend API base URL to the live backend URL:
+
+```bash
+az containerapp create \
+  --name frontend-service \
+  --resource-group study-coach-rg \
+  --environment study-coach-env \
+  --image mystudycoachregistry.azurecr.io/frontend:latest \
+  --target-port 80 \
+  --ingress external \
+  --registry-server mystudycoachregistry.azurecr.io
+```
+
+### 4) Verify the deployment
+
+Once the commands finish, Azure will output external URLs for both services. Test the backend health endpoint:
+
+```bash
+curl https://<backend-service-url>/health
+```
+
+Then open the frontend URL in a browser to validate that the app loads and calls the live backend correctly.
+
+This is the recommended Azure deployment approach for a Dockerized, multi-service app like Voice AI Study Coach because it gives you scalable HTTP ingress, managed networking, and a production-ready database layer without running everything in a single VM.
 
 ---
 
