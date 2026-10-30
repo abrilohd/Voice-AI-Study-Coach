@@ -9,8 +9,8 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import anthropic
-import google.genai as genai
 import openai
+from google import genai
 
 from app.core.config import settings
 
@@ -94,7 +94,8 @@ class LLMRouter:
         if self._gemini is None:
             if not settings.gemini_api_key:
                 raise ValueError("Gemini API key not configured. Set GEMINI_API_KEY in .env")
-            self._gemini = genai.Client(api_key=settings.gemini_api_key)
+            # Initialize client directly (google-genai >= 0.8 doesn't use configure())
+            self._gemini = genai.Client(api_key=settings.gemini_api_key)  # type: ignore[call-arg]
         return self._gemini
 
     def _build_system_claude(self, system: str, use_cache: bool) -> str | list[dict[str, Any]]:
@@ -221,35 +222,32 @@ class LLMRouter:
         """
         self._get_gemini()
 
-        # Gemini format: system instruction + user/assistant messages
+        # Gemini format: create model with system instruction
         model = genai.GenerativeModel(  # type: ignore[attr-defined]
-            model_name=settings.gemini_model, system_instruction=system
+            model=settings.gemini_model,
+            system_instruction=system,
         )
 
         # Convert messages to Gemini format (role: user/model)
-        gemini_messages = [
-            {
-                "role": "model" if msg["role"] == "assistant" else msg["role"],
-                "parts": [msg["content"]],
-            }
-            for msg in messages
-        ]
+        gemini_contents = []
+        for msg in messages:
+            role = "model" if msg["role"] == "assistant" else "user"
+            gemini_contents.append({"role": role, "parts": [{"text": msg["content"]}]})
 
-        response = await model.generate_content_async(
-            gemini_messages,
+        # Generate with streaming
+        response = model.generate_content(
+            gemini_contents,
             stream=True,
-            generation_config=genai.GenerationConfig(  # type: ignore[attr-defined]
-                max_output_tokens=settings.max_response_tokens
-            ),
+            generation_config={"max_output_tokens": settings.max_response_tokens},
         )
 
-        async for chunk in response:
+        # Stream chunks
+        for chunk in response:
             if hasattr(chunk, "text") and chunk.text:
                 yield {"type": "text", "content": chunk.text}
 
-        # Gemini usage info only available after stream completes
-        # Note: usage_metadata available on final response object after iteration
-        if hasattr(response, "usage_metadata"):
+        # Usage info available after stream completes
+        if hasattr(response, "usage_metadata") and response.usage_metadata:
             usage = response.usage_metadata
             yield {
                 "type": "usage",
@@ -430,20 +428,17 @@ class LLMRouter:
         elif selected_provider == "gemini":
             self._get_gemini()
             model = genai.GenerativeModel(  # type: ignore[attr-defined]
-                model_name=settings.gemini_model, system_instruction=system
+                model=settings.gemini_model,
+                system_instruction=system,
             )
-            gemini_messages = [
-                {
-                    "role": "model" if msg["role"] == "assistant" else msg["role"],
-                    "parts": [msg["content"]],
-                }
-                for msg in messages
-            ]
-            response = await model.generate_content_async(
-                gemini_messages,
-                generation_config=genai.GenerationConfig(  # type: ignore[attr-defined]
-                    max_output_tokens=settings.max_response_tokens
-                ),
+            gemini_contents = []
+            for msg in messages:
+                role = "model" if msg["role"] == "assistant" else "user"
+                gemini_contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+            
+            response = model.generate_content(
+                gemini_contents,
+                generation_config={"max_output_tokens": settings.max_response_tokens},
             )
             text = response.text if hasattr(response, "text") else ""
             usage = response.usage_metadata if hasattr(response, "usage_metadata") else None
