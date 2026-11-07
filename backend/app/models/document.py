@@ -71,14 +71,16 @@ class DocumentChunk(Base):
     # Relationships
     document: Mapped["Document"] = relationship(back_populates="chunks")
 
-    # IVFFlat index for approximate nearest-neighbor search
-    # Note: ivfflat requires data to exist before it's efficient.
-    # 'lists' parameter (100) is appropriate for <1M vectors; use hnsw at scale.
+    # HNSW index for approximate nearest-neighbor search
+    # HNSW provides better recall than ivfflat, especially for smaller datasets
+    # m=16: bidirectional links per node (balance speed/recall)
+    # ef_construction=64: build-time quality parameter
     __table_args__ = (
         Index(
             "ix_chunks_embedding",
             "embedding",
-            postgresql_using="ivfflat",
-            postgresql_with={"lists": 100},
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
     )

@@ -1,0 +1,19 @@
+Operating System Process Scheduling: A Comprehensive Overview
+
+Process scheduling is a critical component of operating system design, responsible for determining which process executes on the CPU at any given time. The scheduler must balance multiple competing objectives: CPU utilization, throughput, turnaround time, waiting time, and response time. Different scheduling algorithms prioritize these objectives differently, making the choice of algorithm dependent on the system's requirements and workload characteristics.
+
+First-Come First-Served (FCFS) Scheduling
+
+FCFS is the simplest CPU scheduling algorithm. Processes are executed in the order they arrive in the ready queue, similar to customers in a line at a store. This non-preemptive algorithm is easy to understand and implement using a FIFO queue. However, FCFS suffers from the "convoy effect" where short processes wait behind long ones, resulting in poor average waiting times. For example, if a process requiring 24 milliseconds arrives before three processes each requiring 3 milliseconds, the average waiting time becomes significantly worse than if the shorter processes executed first.
+
+Shortest Job First (SJF) Scheduling
+
+SJF scheduling selects the process with the smallest next CPU burst time. This algorithm can be either preemptive (Shortest Remaining Time First) or non-preemptive. SJF is provably optimal in terms of minimizing average waiting time for a given set of processes. However, its main challenge is predicting future CPU burst times. In practice, systems use exponential averaging of past burst lengths to estimate future behavior. Despite this difficulty, SJF serves as an important theoretical benchmark for comparing other algorithms.
+
+Round Robin (RR) Scheduling
+
+Round Robin scheduling is specifically designed for time-sharing systems. Each process receives a fixed time quantum (typically 10-100 milliseconds) to execute. When the quantum expires, the process is preempted and moved to the end of the ready queue. The performance of RR heavily depends on the quantum size: too small causes excessive context switching overhead, while too large degrades into FCFS behavior. RR ensures fairness by giving each process equal CPU time and provides good response times for interactive systems, though it doesn't minimize average waiting time like SJF.
+
+Priority Scheduling
+
+Priority scheduling assigns each process a priority value, with the CPU allocated to the highest-priority process. Priorities can be defined internally (based on time limits, memory requirements, or resource needs) or externally (based on process importance, payment, or political factors). The algorithm can be either preemptive or non-preemptive. A major problem with priority scheduling is starvation, where low-priority processes may wait indefinitely. This is typically solved through aging, where process priorities increase as they wait longer, ensuring eventual execution.
