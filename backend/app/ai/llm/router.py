@@ -10,9 +10,12 @@ from typing import Any
 
 import anthropic
 import openai
+import structlog
 from google import genai
 
 from app.core.config import settings
+
+log = structlog.get_logger()
 
 
 def _estimate_tokens(text: str) -> int:
@@ -211,22 +214,16 @@ class LLMRouter:
     async def _stream_gemini(
         self, messages: list[dict[str, Any]], system: str
     ) -> AsyncGenerator[dict[str, Any], None]:
-        """Stream from Google Gemini.
+        """Stream from Google Gemini using google-genai package.
 
         Args:
             messages: List of message dicts with role and content
             system: System prompt
 
         Yields:
-            Dicts with type="text" and content (Gemini doesn't provide token usage in stream)
+            Dicts with type="text" and content, or type="usage" with token counts
         """
-        self._get_gemini()
-
-        # Gemini format: create model with system instruction
-        model = genai.GenerativeModel(  # type: ignore[attr-defined]
-            model=settings.gemini_model,
-            system_instruction=system,
-        )
+        client = self._get_gemini()
 
         # Convert messages to Gemini format (role: user/model)
         gemini_contents = []
@@ -234,26 +231,34 @@ class LLMRouter:
             role = "model" if msg["role"] == "assistant" else "user"
             gemini_contents.append({"role": role, "parts": [{"text": msg["content"]}]})
 
-        # Generate with streaming
-        response = model.generate_content(
-            gemini_contents,
-            stream=True,
-            generation_config={"max_output_tokens": settings.max_response_tokens},
+        # Create GenerateContentConfig with system instruction and max tokens
+        from google.genai import types
+        
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            max_output_tokens=settings.max_response_tokens,
+        )
+
+        # Stream response using async client
+        response_stream = client.aio.models.generate_content_stream(
+            model=settings.gemini_model,
+            contents=gemini_contents,
+            config=config,
         )
 
         # Stream chunks
-        for chunk in response:
+        async for chunk in response_stream:
             if hasattr(chunk, "text") and chunk.text:
                 yield {"type": "text", "content": chunk.text}
-
-        # Usage info available after stream completes
-        if hasattr(response, "usage_metadata") and response.usage_metadata:
-            usage = response.usage_metadata
-            yield {
-                "type": "usage",
-                "input_tokens": usage.prompt_token_count,
-                "output_tokens": usage.candidates_token_count,
-            }
+            
+            # Check for usage metadata in the chunk
+            if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
+                usage = chunk.usage_metadata
+                yield {
+                    "type": "usage",
+                    "input_tokens": usage.prompt_token_count,
+                    "output_tokens": usage.candidates_token_count,
+                }
 
     async def _stream_provider(
         self,
@@ -341,6 +346,14 @@ class LLMRouter:
                 yield chunk
 
         except Exception as e:
+            # Log the primary failure before attempting fallback
+            log.warning(
+                "llm.primary.failed",
+                provider=selected_provider,
+                error=repr(e),
+                error_type=type(e).__name__,
+            )
+            
             if (
                 not first_chunk_sent
                 and settings.fallback_llm
@@ -356,14 +369,14 @@ class LLMRouter:
                     # Fallback also failed
                     yield {
                         "type": "error",
-                        "message": f"All providers failed: {str(fallback_error)}",
+                        "error": f"All providers failed: {str(fallback_error)}",
                     }
             else:
                 # Mid-stream failure — do NOT splice providers
                 # Send error event and let frontend handle regenerate
                 yield {
                     "type": "error",
-                    "message": f"stream interrupted: {str(e)}",
+                    "error": f"stream interrupted: {str(e)}",
                 }
 
     async def complete(
@@ -426,20 +439,28 @@ class LLMRouter:
             return text, input_tokens, output_tokens
 
         elif selected_provider == "gemini":
-            self._get_gemini()
-            model = genai.GenerativeModel(  # type: ignore[attr-defined]
-                model=settings.gemini_model,
-                system_instruction=system,
-            )
+            client = self._get_gemini()
+            
+            # Convert messages to Gemini format
             gemini_contents = []
             for msg in messages:
                 role = "model" if msg["role"] == "assistant" else "user"
                 gemini_contents.append({"role": role, "parts": [{"text": msg["content"]}]})
             
-            response = model.generate_content(
-                gemini_contents,
-                generation_config={"max_output_tokens": settings.max_response_tokens},
+            # Use google-genai client API
+            from google.genai import types
+            
+            config = types.GenerateContentConfig(
+                system_instruction=system,
+                max_output_tokens=settings.max_response_tokens,
             )
+            
+            response = await client.aio.models.generate_content(
+                model=settings.gemini_model,
+                contents=gemini_contents,
+                config=config,
+            )
+            
             text = response.text if hasattr(response, "text") else ""
             usage = response.usage_metadata if hasattr(response, "usage_metadata") else None
             input_tokens = usage.prompt_token_count if usage else 0

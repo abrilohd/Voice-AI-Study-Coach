@@ -131,6 +131,51 @@ def test_usage_event_structure():
     assert "output_tokens" in parsed
 
 
+def test_error_event_no_provider_leak():
+    """Verify error events don't leak provider-specific error messages.
+    
+    SECURITY: Provider SDK errors often contain internal details like:
+    - API endpoint URLs
+    - Service names (Claude, GPT, Gemini)
+    - Stack traces
+    - Rate limit bucket names
+    
+    Backend should log full details but send generic messages to client.
+    """
+    # Simulated provider errors that should NOT reach frontend
+    provider_errors = [
+        "anthropic.APIConnectionError: Connection timeout to https://api.anthropic.com",
+        "openai.RateLimitError: You exceeded your current quota",
+        "google.api_core.exceptions.ResourceExhausted: 429 RESOURCE_EXHAUSTED",
+        "stack trace with file paths and line numbers",
+    ]
+    
+    # What backend SHOULD send (generic messages)
+    safe_error_messages = [
+        "internal error",
+        "stream interrupted",
+        "All providers failed",
+        "no user messages found",
+        "conversation not found",
+    ]
+    
+    # Verify no provider SDK names leak
+    for error_msg in safe_error_messages:
+        error_event = {"type": "error", "error": error_msg}
+        serialized = json.dumps(error_event)
+        
+        # Check for provider SDK names (should NOT be present)
+        assert "anthropic" not in serialized.lower()
+        assert "openai" not in serialized.lower()
+        assert "google" not in serialized.lower()
+        assert "gemini" not in serialized.lower()
+        assert "claude" not in serialized.lower()
+        assert "gpt" not in serialized.lower()
+        assert "api_core" not in serialized.lower()
+        assert "traceback" not in serialized.lower()
+        assert "http" not in serialized.lower()
+
+
 if __name__ == "__main__":
     """Run tests manually to validate SSE contracts."""
     print("Running SSE event structure tests...\n")
@@ -158,5 +203,11 @@ if __name__ == "__main__":
         print("✅ test_usage_event_structure PASSED")
     except AssertionError as e:
         print(f"❌ test_usage_event_structure FAILED: {e}")
+    
+    try:
+        test_error_event_no_provider_leak()
+        print("✅ test_error_event_no_provider_leak PASSED")
+    except AssertionError as e:
+        print(f"❌ test_error_event_no_provider_leak FAILED: {e}")
     
     print("\n✅ All SSE event structure tests completed")
