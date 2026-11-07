@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react"
 import { streamRAGChat } from "../lib/api"
-import type { Message, Source } from "../types"
+import type { Message, Source, DonePayload } from "../types"
 
 interface UseChatReturn {
   messages: Message[]
@@ -69,15 +69,22 @@ export function useChat(documentIds: string[] = []): UseChatReturn {
           )
         },
         // onDone: stop streaming, save sources
-        (data: { sources?: Source[] }) => {
+        (data: DonePayload) => {
+          const sources: Source[] = data.sources.map((s) => ({
+            documentId: s.document_id,
+            documentTitle: s.document_title,
+            similarityScore: s.similarity_score,
+            chunkIndex: s.chunk_index,
+          }));
+          
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId
-                ? { ...m, isStreaming: false, sources: data.sources }
+                ? { ...m, isStreaming: false, sources }
                 : m
             )
           )
-          setSources(data.sources || [])
+          setSources(sources)
           setLoading(false)
         },
         // onError: display error

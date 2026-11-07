@@ -60,5 +60,9 @@ uv.lock
 .eggs/
 # Day logs and test scripts (not part of project structure)
 DAY_*_FIXES.md
-DAY_*_*.md
 test_day*.cmd
+
+# Test files
+test.mp3
+*.mp3
+*.wav

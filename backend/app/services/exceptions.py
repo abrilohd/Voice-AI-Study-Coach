@@ -104,3 +104,42 @@ class EmbeddingError(Exception):
         """
         self.detail = detail
         super().__init__(f"Embedding generation failed: {detail}")
+
+
+class AudioProcessingError(Exception):
+    """Raised when audio file processing fails."""
+
+    def __init__(self, detail: str) -> None:
+        """Initialize exception with error details.
+
+        Args:
+            detail: Detailed error message about audio processing failure
+        """
+        self.detail = detail
+        super().__init__(f"Audio processing failed: {detail}")
+
+
+class TranscriptionError(Exception):
+    """Raised when speech-to-text transcription fails."""
+
+    def __init__(self, detail: str) -> None:
+        """Initialize exception with error details.
+
+        Args:
+            detail: Detailed error message from Whisper transcription
+        """
+        self.detail = detail
+        super().__init__(f"Transcription failed: {detail}")
+
+
+class TTSError(Exception):
+    """Raised when text-to-speech synthesis fails."""
+
+    def __init__(self, detail: str) -> None:
+        """Initialize exception with error details.
+
+        Args:
+            detail: Detailed error message from TTS provider
+        """
+        self.detail = detail
+        super().__init__(f"TTS failed: {detail}")

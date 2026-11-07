@@ -100,7 +100,7 @@ class LLMRouter:
             if not settings.gemini_api_key:
                 raise ValueError("Gemini API key not configured. Set GEMINI_API_KEY in .env")
             # Initialize client directly (google-genai >= 0.8 doesn't use configure())
-            self._gemini = genai.Client(api_key=settings.gemini_api_key)  # type: ignore[call-arg]
+            self._gemini = genai.Client(api_key=settings.gemini_api_key)
         return self._gemini
 
     def _get_groq(self) -> AsyncGroq:
@@ -259,12 +259,12 @@ class LLMRouter:
         # Stream response using async client
         response_stream = client.aio.models.generate_content_stream(
             model=settings.gemini_model,
-            contents=gemini_contents,
+            contents=gemini_contents,  # type: ignore[arg-type]
             config=config,
         )
 
         # Stream chunks
-        async for chunk in response_stream:
+        async for chunk in response_stream:  # type: ignore[attr-defined]
             if hasattr(chunk, "text") and chunk.text:
                 yield {"type": "text", "content": chunk.text}
             
@@ -301,7 +301,7 @@ class LLMRouter:
             stream=True,
         )
 
-        async for chunk in stream:
+        async for chunk in stream:  # type: ignore[union-attr]
             # Text content chunks
             if chunk.choices and chunk.choices[0].delta.content is not None:
                 yield {"type": "text", "content": chunk.choices[0].delta.content}
@@ -514,15 +514,15 @@ class LLMRouter:
             
             response = await client.aio.models.generate_content(
                 model=settings.gemini_model,
-                contents=gemini_contents,
+                contents=gemini_contents,  # type: ignore[arg-type]
                 config=config,
             )
             
-            text = response.text if hasattr(response, "text") else ""
+            gemini_text = response.text if hasattr(response, "text") else ""
             usage = response.usage_metadata if hasattr(response, "usage_metadata") else None
-            input_tokens = usage.prompt_token_count if usage else 0
-            output_tokens = usage.candidates_token_count if usage else 0
-            return text, input_tokens, output_tokens
+            gemini_input_tokens = usage.prompt_token_count if usage else 0
+            gemini_output_tokens = usage.candidates_token_count if usage else 0
+            return gemini_text, gemini_input_tokens, gemini_output_tokens  # type: ignore[return-value]
 
         elif selected_provider == "groq":
             groq_client = self._get_groq()
@@ -533,8 +533,8 @@ class LLMRouter:
                 messages=messages_with_system,  # type: ignore[arg-type]
                 stream=False,
             )
-            text = groq_response.choices[0].message.content or ""
-            usage = groq_response.usage
+            text = groq_response.choices[0].message.content or ""  # type: ignore[union-attr]
+            usage = groq_response.usage  # type: ignore[union-attr]
             input_tokens = usage.prompt_tokens if usage else 0
             output_tokens = usage.completion_tokens if usage else 0
             return text, input_tokens, output_tokens

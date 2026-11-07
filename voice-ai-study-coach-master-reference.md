@@ -9,10 +9,10 @@
 
 **Voice AI Study Coach** — a startup-grade, production-ready AI study coach.
 
-- No-lock-in LLM router (Claude / OpenAI / Gemini, hot-swappable)
+- No-lock-in LLM router (Claude / OpenAI / Gemini/ Groq, hot-swappable)
 - Voice I/O (input + output)
 - RAG-ready document ingestion
-- PostgreSQL-backed persistence (async SQLAlchemy 2)
+- PostgreSQL-backed persistence (async SQLAlchemy 2) - pgvector for vector database
 - Designed to scale to 100k users without rewriting service boundaries
 - Every module independently replaceable
 

@@ -152,7 +152,7 @@ async def auth_headers(test_user: User) -> dict[str, str]:
     Returns:
         dict: Dictionary containing Authorization header with Bearer token.
     """
-    # Create access token with user's email as subject
-    access_token = create_access_token(data={"sub": test_user.email})
+    # Create access token with user's ID as subject (matches dependencies.py logic)
+    access_token = create_access_token(subject=str(test_user.id))
 
     return {"Authorization": f"Bearer {access_token}"}

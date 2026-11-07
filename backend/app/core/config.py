@@ -40,10 +40,10 @@ class Settings(BaseSettings):
     fallback_llm: Literal["claude", "openai", "groq", "gemini"] = "groq"
 
     # Model names
-    claude_model: str = "claude-sonnet-4"
+    claude_model: str = "claude-sonnet-5"
     openai_model: str = "gpt-4o-mini"
-    gemini_model: str = "gemini-2.0-flash-exp"
-    groq_model: str = "llama-3.3-70b-versatile"
+    gemini_model: str = "gemini-3-flash-preview"
+    groq_model: str = "qwen/qwen3.8-27b"
 
     # Generation settings
     max_response_tokens: int = 4096
@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 1024  # voyage-3 produces 1024-dim embeddings
     max_rag_chunks: int = 5
     rag_similarity_threshold: float = 0.70
+
+    # Voice Configuration
+    elevenlabs_api_key: str = ""
+    tts_voice_id: str = "21m00Tcm4TlvDq8ikWAM"  # Rachel — clear, professional, neutral
+    tts_model: str = "eleven_turbo_v2"  # Lowest latency model (<500ms)
+    whisper_model: str = "base"  # base/small/medium/large
 
     @field_validator("database_url", mode="after")
     @classmethod
