@@ -141,15 +141,13 @@ def test_error_event_no_provider_leak():
     - Rate limit bucket names
     
     Backend should log full details but send generic messages to client.
-    """
-    # Simulated provider errors that should NOT reach frontend
-    provider_errors = [
-        "anthropic.APIConnectionError: Connection timeout to https://api.anthropic.com",
-        "openai.RateLimitError: You exceeded your current quota",
-        "google.api_core.exceptions.ResourceExhausted: 429 RESOURCE_EXHAUSTED",
-        "stack trace with file paths and line numbers",
-    ]
     
+    Examples of provider errors that should NOT reach frontend:
+    - "anthropic.APIConnectionError: Connection timeout to https://api.anthropic.com"
+    - "openai.RateLimitError: You exceeded your current quota"
+    - "google.api_core.exceptions.ResourceExhausted: 429 RESOURCE_EXHAUSTED"
+    - Stack traces with file paths and line numbers
+    """
     # What backend SHOULD send (generic messages)
     safe_error_messages = [
         "internal error",
