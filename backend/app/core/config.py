@@ -40,9 +40,10 @@ class Settings(BaseSettings):
     fallback_llm: Literal["claude", "openai", "groq", "gemini"] = "groq"
 
     # Model names
-    claude_model: str = "claude-3-5-sonnet-20241022"
-    openai_model: str = "gpt-4o"
+    claude_model: str = "claude-sonnet-4"
+    openai_model: str = "gpt-4o-mini"
     gemini_model: str = "gemini-2.0-flash-exp"
+    groq_model: str = "llama-3.3-70b-versatile"
 
     # Generation settings
     max_response_tokens: int = 4096

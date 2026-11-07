@@ -1,7 +1,7 @@
 """Multi-provider LLM router with streaming support.
 
 This module provides a unified interface for streaming responses from multiple
-LLM providers (Anthropic Claude, OpenAI, Google Gemini) with automatic fallback,
+LLM providers (Anthropic Claude, OpenAI, Google Gemini, Groq) with automatic fallback,
 prompt caching support, and proper error handling.
 """
 
@@ -12,6 +12,7 @@ import anthropic
 import openai
 import structlog
 from google import genai
+from groq import AsyncGroq
 
 from app.core.config import settings
 
@@ -54,6 +55,7 @@ class LLMRouter:
         self._anthropic: anthropic.Anthropic | None = None
         self._openai: openai.AsyncOpenAI | None = None
         self._gemini: genai.Client | None = None
+        self._groq: AsyncGroq | None = None
 
     def _get_anthropic(self) -> anthropic.Anthropic:
         """Lazy-initialize Anthropic client.
@@ -100,6 +102,21 @@ class LLMRouter:
             # Initialize client directly (google-genai >= 0.8 doesn't use configure())
             self._gemini = genai.Client(api_key=settings.gemini_api_key)  # type: ignore[call-arg]
         return self._gemini
+
+    def _get_groq(self) -> AsyncGroq:
+        """Lazy-initialize Groq client.
+
+        Returns:
+            Initialized Groq async client
+
+        Raises:
+            ValueError: If groq_api_key is not configured
+        """
+        if self._groq is None:
+            if not settings.groq_api_key:
+                raise ValueError("Groq API key not configured. Set GROQ_API_KEY in .env")
+            self._groq = AsyncGroq(api_key=settings.groq_api_key)
+        return self._groq
 
     def _build_system_claude(self, system: str, use_cache: bool) -> str | list[dict[str, Any]]:
         """Build system prompt for Claude with optional prompt caching.
@@ -260,6 +277,43 @@ class LLMRouter:
                     "output_tokens": usage.candidates_token_count,
                 }
 
+    async def _stream_groq(
+        self, messages: list[dict[str, Any]], system: str
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Stream from Groq (fast inference with Llama/Mixtral).
+
+        Args:
+            messages: List of message dicts with role and content
+            system: System prompt
+
+        Yields:
+            Dicts with type="text" and content, or type="usage" with token counts
+        """
+        client = self._get_groq()
+
+        # Prepend system message to messages list (Groq uses OpenAI format)
+        messages_with_system = [{"role": "system", "content": system}, *messages]
+
+        stream = await client.chat.completions.create(
+            model=settings.groq_model,
+            max_tokens=settings.max_response_tokens,
+            messages=messages_with_system,  # type: ignore[arg-type]
+            stream=True,
+        )
+
+        async for chunk in stream:
+            # Text content chunks
+            if chunk.choices and chunk.choices[0].delta.content is not None:
+                yield {"type": "text", "content": chunk.choices[0].delta.content}
+
+            # Usage information (if provided in final chunk)
+            if hasattr(chunk, "usage") and chunk.usage is not None:
+                yield {
+                    "type": "usage",
+                    "input_tokens": chunk.usage.prompt_tokens,
+                    "output_tokens": chunk.usage.completion_tokens,
+                }
+
     async def _stream_provider(
         self,
         provider: str,
@@ -270,7 +324,7 @@ class LLMRouter:
         """Stream from a specific provider.
 
         Args:
-            provider: Provider name (claude, openai, gemini)
+            provider: Provider name (claude, openai, gemini, groq)
             messages: List of message dicts
             system: System prompt
             use_cache: Whether to enable prompt caching (Claude only)
@@ -289,6 +343,9 @@ class LLMRouter:
                 yield chunk
         elif provider == "gemini":
             async for chunk in self._stream_gemini(messages, system):
+                yield chunk
+        elif provider == "groq":
+            async for chunk in self._stream_groq(messages, system):
                 yield chunk
         else:
             raise ValueError(f"Unknown provider: {provider}")
@@ -465,6 +522,21 @@ class LLMRouter:
             usage = response.usage_metadata if hasattr(response, "usage_metadata") else None
             input_tokens = usage.prompt_token_count if usage else 0
             output_tokens = usage.candidates_token_count if usage else 0
+            return text, input_tokens, output_tokens
+
+        elif selected_provider == "groq":
+            groq_client = self._get_groq()
+            messages_with_system = [{"role": "system", "content": system}, *messages]
+            groq_response = await groq_client.chat.completions.create(
+                model=settings.groq_model,
+                max_tokens=settings.max_response_tokens,
+                messages=messages_with_system,  # type: ignore[arg-type]
+                stream=False,
+            )
+            text = groq_response.choices[0].message.content or ""
+            usage = groq_response.usage
+            input_tokens = usage.prompt_tokens if usage else 0
+            output_tokens = usage.completion_tokens if usage else 0
             return text, input_tokens, output_tokens
 
         else:
