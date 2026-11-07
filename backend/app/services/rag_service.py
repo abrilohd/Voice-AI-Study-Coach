@@ -37,7 +37,7 @@ class RAGService:
         EMBEDDING_BATCH_SIZE: Voyage API limit per request
         MIN_SIMILARITY: Below this, chunks are noise not signal
         MAX_CHUNKS_IN_CONTEXT: Inject at most 5 chunks for context budget
-        MIN_CHUNK_TOKENS: Strip chunks shorter than this (headers/footers)
+        MIN_CHUNK_TOKENS: Strip chunks shorter than this (50 tokens = ~7 words minimum)
     """
 
     CHUNK_SIZE_TOKENS = 512
@@ -46,7 +46,7 @@ class RAGService:
     EMBEDDING_BATCH_SIZE = 128
     MIN_SIMILARITY = 0.70
     MAX_CHUNKS_IN_CONTEXT = 5
-    MIN_CHUNK_TOKENS = 50
+    MIN_CHUNK_TOKENS = 50  
 
     def __init__(self, document_repo: DocumentRepository, db: AsyncSession) -> None:
         """Initialize RAG service.
@@ -253,7 +253,7 @@ class RAGService:
         chunks = []
         for idx, content in enumerate(text_chunks):
             token_count = token_length(content)
-            # Skip chunks that are too short (likely headers/footers)
+            # Skip chunks that are too short (< 10 tokens = trivial content)
             if token_count >= self.MIN_CHUNK_TOKENS:
                 chunks.append(
                     {
@@ -274,7 +274,7 @@ class RAGService:
             texts: List of text strings to embed
 
         Returns:
-            List of embedding vectors (1536 floats each)
+            List of embedding vectors (1024 floats each)
 
         Raises:
             EmbeddingError: If API call fails or dimension mismatch

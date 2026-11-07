@@ -121,8 +121,8 @@ CORS_ORIGINS=http://localhost:5173
 
 ### Switch LLMs (Zero Code Changes)
 ```bash
-PRIMARY_LLM=anthropic
-FALLBACK_LLM=openai
+PRIMARY_LLM=gemini
+FALLBACK_LLM=groq
 ```
 
 ---

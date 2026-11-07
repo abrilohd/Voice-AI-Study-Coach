@@ -33,10 +33,11 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     gemini_api_key: str = ""
+    groq_api_key: str = ""
 
     # LLM Configuration
-    primary_llm: Literal["claude", "openai", "gemini"] = "claude"
-    fallback_llm: Literal["claude", "openai", "gemini"] = "openai"
+    primary_llm: Literal["claude", "openai", "groq", "gemini"] = "gemini"
+    fallback_llm: Literal["claude", "openai", "groq", "gemini"] = "groq"
 
     # Model names
     claude_model: str = "claude-3-5-sonnet-20241022"
