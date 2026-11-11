@@ -226,6 +226,18 @@ export async function deleteDocument(id: string): Promise<void> {
 }
 
 // ============================================================================
+// Voice API
+// ============================================================================
+
+export async function transcribeAudio(blob: Blob): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', blob, 'recording.webm');
+
+  const response = await api.upload<{ text: string }>('/api/v1/voice/transcribe', formData);
+  return response.text;
+}
+
+// ============================================================================
 // Chat API (Server-Sent Events)
 // ============================================================================
 

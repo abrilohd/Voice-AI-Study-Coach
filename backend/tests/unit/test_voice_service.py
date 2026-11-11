@@ -1,252 +1,105 @@
-"""Unit tests for VoiceService with AsyncMock (no real API calls)."""
+"""Unit tests for VoiceService."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-import httpx
 import pytest
 
-from app.services.exceptions import AudioProcessingError, TranscriptionError, TTSError
+from app.services.exceptions import AudioProcessingError, TranscriptionError
 from app.services.voice_service import VoiceService
 
 
-@pytest.fixture
-def voice_service() -> VoiceService:
-    """Create a VoiceService instance for testing."""
-    return VoiceService()
+@pytest.mark.asyncio
+class TestTranscribe:
+    """Unit tests for VoiceService.transcribe()."""
 
+    async def test_transcribe_invalid_format(self):
+        """Test transcription rejects unsupported file formats."""
+        # Arrange
+        service = VoiceService()
+        audio_data = b"fake audio data"
+        filename = "malicious.exe"
 
-class TestTranscribeAudio:
-    """Tests for transcribe_audio method."""
-
-    async def test_transcribe_validates_file_size(
-        self, voice_service: VoiceService
-    ) -> None:
-        """Test that transcription rejects files exceeding 25MB."""
-        # Create audio bytes larger than 25MB
-        large_audio = b"x" * (26 * 1024 * 1024)  # 26MB
-
+        # Act & Assert
         with pytest.raises(AudioProcessingError) as exc_info:
-            await voice_service.transcribe_audio(large_audio, "test.mp3")
-
-        assert "exceeds maximum size" in str(exc_info.value)
-        assert "25MB" in str(exc_info.value)
-
-    async def test_transcribe_validates_file_format(
-        self, voice_service: VoiceService
-    ) -> None:
-        """Test that transcription rejects unsupported file formats."""
-        audio_bytes = b"fake audio data"
-
-        with pytest.raises(AudioProcessingError) as exc_info:
-            await voice_service.transcribe_audio(audio_bytes, "audio.exe")
+            await service.transcribe(audio_data, filename)
 
         assert "Unsupported audio format" in str(exc_info.value)
         assert ".exe" in str(exc_info.value)
 
-    async def test_transcribe_success(self, voice_service: VoiceService) -> None:
-        """Test successful audio transcription with mocked Whisper."""
-        audio_bytes = b"fake audio data"
-        filename = "test.wav"
+    async def test_transcribe_file_too_large(self):
+        """Test transcription rejects files exceeding 25MB limit."""
+        # Arrange
+        service = VoiceService()
+        large_audio_data = b"\x00" * (26 * 1024 * 1024)  # 26MB
+        filename = "large.mp3"
 
-        # Mock Whisper model and transcribe method
-        mock_model = MagicMock()
-        mock_model.transcribe.return_value = {"text": "  Hello world  "}
+        # Act & Assert
+        with pytest.raises(AudioProcessingError) as exc_info:
+            await service.transcribe(large_audio_data, filename)
 
-        with patch.object(voice_service, "_load_whisper_model", return_value=mock_model):
-            result = await voice_service.transcribe_audio(audio_bytes, filename)
+        assert "exceeds maximum size" in str(exc_info.value)
+        assert "25" in str(exc_info.value)
 
-        # Should return stripped text
-        assert result == "Hello world"
+    async def test_transcribe_success(self):
+        """Test successful transcription."""
+        # Arrange
+        service = VoiceService()
+        audio_data = b"fake audio data"
+        filename = "test.mp3"
 
-        # Verify model was loaded
-        mock_model.transcribe.assert_called_once()
+        # Mock Groq client
+        mock_transcription = AsyncMock()
+        mock_transcription.text = "Hello, this is a test."
 
-    async def test_transcribe_model_load_failure(
-        self, voice_service: VoiceService
-    ) -> None:
-        """Test that model loading failures raise TranscriptionError."""
-        audio_bytes = b"fake audio data"
-        filename = "test.wav"
+        mock_client = AsyncMock()
+        mock_client.audio.transcriptions.create = AsyncMock(return_value=mock_transcription)
 
-        with patch.object(
-            voice_service,
-            "_load_whisper_model",
-            side_effect=TranscriptionError("Failed to load Whisper model: Model not found"),
-        ):
+        # Act
+        with patch("app.services.voice_service.AsyncGroq", return_value=mock_client):
+            result = await service.transcribe(audio_data, filename)
+
+        # Assert
+        assert result == "Hello, this is a test."
+        mock_client.audio.transcriptions.create.assert_called_once()
+
+    async def test_transcribe_empty_result(self):
+        """Test transcription with empty result."""
+        # Arrange
+        service = VoiceService()
+        audio_data = b"silence"
+        filename = "silent.wav"
+
+        # Mock Groq client returning empty text
+        mock_transcription = AsyncMock()
+        mock_transcription.text = "  "  # Whitespace only
+
+        mock_client = AsyncMock()
+        mock_client.audio.transcriptions.create = AsyncMock(return_value=mock_transcription)
+
+        # Act
+        with patch("app.services.voice_service.AsyncGroq", return_value=mock_client):
+            result = await service.transcribe(audio_data, filename)
+
+        # Assert
+        assert result == ""  # Should be stripped to empty string
+
+    async def test_transcribe_api_failure(self):
+        """Test transcription handles API failures gracefully."""
+        # Arrange
+        service = VoiceService()
+        audio_data = b"fake audio"
+        filename = "test.webm"
+
+        # Mock Groq client raising exception
+        mock_client = AsyncMock()
+        mock_client.audio.transcriptions.create = AsyncMock(
+            side_effect=Exception("API connection failed")
+        )
+
+        # Act & Assert
+        with patch("app.services.voice_service.AsyncGroq", return_value=mock_client):
             with pytest.raises(TranscriptionError) as exc_info:
-                await voice_service.transcribe_audio(audio_bytes, filename)
+                await service.transcribe(audio_data, filename)
 
-        assert "Failed to load Whisper model" in str(exc_info.value)
-
-    async def test_transcribe_processing_failure(
-        self, voice_service: VoiceService
-    ) -> None:
-        """Test that Whisper processing failures raise TranscriptionError."""
-        audio_bytes = b"fake audio data"
-        filename = "test.wav"
-
-        # Mock model that fails during transcription
-        mock_model = MagicMock()
-        mock_model.transcribe.side_effect = Exception("Corrupted audio")
-
-        with patch.object(voice_service, "_load_whisper_model", return_value=mock_model):
-            with pytest.raises(TranscriptionError) as exc_info:
-                await voice_service.transcribe_audio(audio_bytes, filename)
-
-        assert "Whisper processing failed" in str(exc_info.value)
-
-    async def test_transcribe_empty_result(self, voice_service: VoiceService) -> None:
-        """Test transcription returns empty string for silent audio."""
-        audio_bytes = b"fake audio data"
-        filename = "test.wav"
-
-        # Mock Whisper returning empty text
-        mock_model = MagicMock()
-        mock_model.transcribe.return_value = {"text": "   "}
-
-        with patch.object(voice_service, "_load_whisper_model", return_value=mock_model):
-            result = await voice_service.transcribe_audio(audio_bytes, filename)
-
-        assert result == ""
-
-
-class TestSynthesizeSpeech:
-    """Tests for synthesize_speech method."""
-
-    async def test_synthesize_validates_text_length(
-        self, voice_service: VoiceService
-    ) -> None:
-        """Test that synthesis rejects text exceeding 5000 characters."""
-        # Create text longer than 5000 chars
-        long_text = "x" * 5001
-
-        with pytest.raises(TTSError) as exc_info:
-            await voice_service.synthesize_speech(long_text)
-
-        assert "exceeds maximum length" in str(exc_info.value)
-        assert "5000" in str(exc_info.value)
-
-    async def test_synthesize_success(self, voice_service: VoiceService) -> None:
-        """Test successful speech synthesis with mocked ElevenLabs API."""
-        text = "Hello, this is a test."
-        fake_mp3 = b"fake_mp3_bytes"
-
-        # Mock httpx response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = fake_mp3
-
-        # Mock AsyncClient
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.post = AsyncMock(return_value=mock_response)
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            result = await voice_service.synthesize_speech(text)
-
-        assert result == fake_mp3
-
-        # Verify API was called with correct parameters
-        mock_client.post.assert_called_once()
-        call_args = mock_client.post.call_args
-        assert "text-to-speech" in call_args[0][0]  # URL contains endpoint
-        assert call_args[1]["json"]["text"] == text
-
-    async def test_synthesize_with_custom_voice(
-        self, voice_service: VoiceService
-    ) -> None:
-        """Test synthesis with custom voice_id parameter."""
-        text = "Hello, this is a test."
-        custom_voice_id = "custom_voice_123"
-        fake_mp3 = b"fake_mp3_bytes"
-
-        # Mock httpx response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.content = fake_mp3
-
-        # Mock AsyncClient
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.post = AsyncMock(return_value=mock_response)
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            result = await voice_service.synthesize_speech(text, voice_id=custom_voice_id)
-
-        assert result == fake_mp3
-
-        # Verify custom voice_id was used in URL
-        call_args = mock_client.post.call_args
-        assert custom_voice_id in call_args[0][0]
-
-    async def test_synthesize_api_failure(self, voice_service: VoiceService) -> None:
-        """Test that ElevenLabs API failures raise TTSError."""
-        text = "Hello, this is a test."
-
-        # Mock httpx response with 401 error
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_response.text = "Invalid API key"
-
-        # Mock AsyncClient
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.post = AsyncMock(return_value=mock_response)
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            with pytest.raises(TTSError) as exc_info:
-                await voice_service.synthesize_speech(text)
-
-        assert "ElevenLabs API returned status 401" in str(exc_info.value)
-
-    async def test_synthesize_timeout(self, voice_service: VoiceService) -> None:
-        """Test that API timeout raises TTSError."""
-        text = "Hello, this is a test."
-
-        # Mock AsyncClient that raises timeout
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            with pytest.raises(TTSError) as exc_info:
-                await voice_service.synthesize_speech(text)
-
-        assert "TTS request timed out" in str(exc_info.value)
-
-    async def test_synthesize_network_error(self, voice_service: VoiceService) -> None:
-        """Test that network errors raise TTSError."""
-        text = "Hello, this is a test."
-
-        # Mock AsyncClient that raises network error
-        mock_client = AsyncMock()
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.post = AsyncMock(side_effect=Exception("Network unreachable"))
-
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            with pytest.raises(TTSError) as exc_info:
-                await voice_service.synthesize_speech(text)
-
-        assert "TTS processing failed" in str(exc_info.value)
-
-
-class TestGetSupportedFormats:
-    """Tests for get_supported_formats method."""
-
-    def test_get_supported_formats(self, voice_service: VoiceService) -> None:
-        """Test that supported formats are returned correctly."""
-        formats = voice_service.get_supported_formats()
-
-        # Should return list of supported extensions
-        assert isinstance(formats, list)
-        assert len(formats) == 5
-        assert ".webm" in formats
-        assert ".mp3" in formats
-        assert ".wav" in formats
-        assert ".m4a" in formats
-        assert ".ogg" in formats
+        # Should return generic error, not the API error details
+        assert "service unavailable" in str(exc_info.value).lower()

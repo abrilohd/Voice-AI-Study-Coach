@@ -2,11 +2,10 @@ import ChatInput from '../chat/ChatInput';
 import type { UseVoiceReturn } from '../../hooks/useVoice';
 
 interface ComposerProps {
-  onVoiceModeChange?: (isVoiceMode: boolean) => void;
   voiceHook: UseVoiceReturn;
 }
 
-export default function Composer({ onVoiceModeChange, voiceHook }: ComposerProps) {
+export default function Composer({ voiceHook }: ComposerProps) {
   return (
     <div
       style={{
@@ -20,7 +19,7 @@ export default function Composer({ onVoiceModeChange, voiceHook }: ComposerProps
       }}
     >
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <ChatInput onVoiceModeChange={onVoiceModeChange} voiceHook={voiceHook} />
+        <ChatInput voiceHook={voiceHook} />
       </div>
     </div>
   );

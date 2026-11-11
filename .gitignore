@@ -60,7 +60,12 @@ uv.lock
 .eggs/
 # Day logs and test scripts (not part of project structure)
 DAY_*_FIXES.md
+DAY*_*.md
+EXECUTE_*.md
+QUICK_START.md
 test_day*.cmd
+token.txt
+*.bat
 
 # Test files
 test.mp3

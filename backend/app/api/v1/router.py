@@ -24,4 +24,4 @@ api_router.include_router(chat_rag_router)
 api_router.include_router(documents_router)
 
 # Include voice routes
-api_router.include_router(voice_router)
+api_router.include_router(voice_router, prefix="/voice", tags=["voice"])

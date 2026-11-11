@@ -38,10 +38,6 @@ interface AppStore {
   toggleSidebar: () => void;
   promptInput: string;
   setPromptInput: (input: string) => void;
-  
-  // Voice state
-  voiceEnabled: boolean;
-  setVoiceEnabled: (enabled: boolean) => void;
 }
 
 // ============================================================================
@@ -285,15 +281,6 @@ export const useStore = create<AppStore>()(
       setPromptInput: (input: string) => {
         set({ promptInput: input });
       },
-
-      // ========================================================================
-      // Voice State
-      // ========================================================================
-      voiceEnabled: true,
-
-      setVoiceEnabled: (enabled: boolean) => {
-        set({ voiceEnabled: enabled });
-      },
     }),
     {
       name: 'voice-ai-study-coach',
@@ -304,7 +291,6 @@ export const useStore = create<AppStore>()(
         documents: state.documents,
         sidebarOpen: state.sidebarOpen,
         activeChatId: state.activeChatId,
-        voiceEnabled: state.voiceEnabled,
       }),
     }
   )

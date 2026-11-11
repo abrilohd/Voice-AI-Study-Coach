@@ -6,11 +6,10 @@ import type { UseVoiceReturn } from '../../hooks/useVoice';
 import type { Message } from '../../types';
 
 interface ChatInputProps {
-  onVoiceModeChange?: (isVoiceMode: boolean) => void;
   voiceHook: UseVoiceReturn;
 }
 
-export default function ChatInput({ onVoiceModeChange, voiceHook }: ChatInputProps) {
+export default function ChatInput({ voiceHook }: ChatInputProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const cleanupRef = useRef<(() => void) | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -27,15 +26,10 @@ export default function ChatInput({ onVoiceModeChange, voiceHook }: ChatInputPro
   // Use the passed voice hook
   const voice = voiceHook;
 
-  const handleSubmit = async (e: React.FormEvent, isVoiceInitiated = false) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text || isStreaming || !activeChatId || !activeChat) return;
-
-    // Notify parent about voice mode
-    if (onVoiceModeChange) {
-      onVoiceModeChange(isVoiceInitiated);
-    }
 
     // 1. Add user message to store
     const userMsg: Message = {
@@ -96,36 +90,36 @@ export default function ChatInput({ onVoiceModeChange, voiceHook }: ChatInputPro
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e, false);
+      handleSubmit(e);
     } else if (e.key === 'Escape') {
       setInput('');
     }
   };
 
   const handleVoiceClick = async () => {
-    if (voice.isRecording) {
-      await voice.stopRecording();
-    } else {
-      await voice.startRecording();
+    if (voice.state === 'recording') {
+      await voice.stop();
+    } else if (voice.state === 'idle') {
+      await voice.start();
     }
   };
 
   // Determine mic button state
   const getMicIcon = () => {
-    if (voice.isTranscribing) {
+    if (voice.state === 'transcribing') {
       return <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />;
     }
-    if (voice.isRecording) {
+    if (voice.state === 'recording') {
       return <MicOff size={18} />;
     }
     return <Mic size={18} />;
   };
 
   const getMicColor = () => {
-    if (voice.isTranscribing) {
+    if (voice.state === 'transcribing') {
       return 'var(--color-accent)';
     }
-    if (voice.isRecording) {
+    if (voice.state === 'recording') {
       return '#EF4444';
     }
     return 'var(--color-text-muted)';
@@ -133,7 +127,7 @@ export default function ChatInput({ onVoiceModeChange, voiceHook }: ChatInputPro
 
   return (
     <>
-      <form onSubmit={(e) => handleSubmit(e, false)} style={{ width: '100%' }}>
+      <form onSubmit={handleSubmit} style={{ width: '100%' }}>
         <div
           style={{
             display: 'flex',
@@ -150,14 +144,14 @@ export default function ChatInput({ onVoiceModeChange, voiceHook }: ChatInputPro
           <button
             type="button"
             onClick={handleVoiceClick}
-            disabled={isStreaming}
-            className={voice.isRecording ? 'recording-pulse' : ''}
+            disabled={isStreaming || voice.state === 'transcribing'}
+            className={voice.state === 'recording' ? 'recording-pulse' : ''}
             style={{
               position: 'relative',
               background: 'transparent',
               border: 'none',
               color: getMicColor(),
-              cursor: isStreaming ? 'not-allowed' : 'pointer',
+              cursor: isStreaming || voice.state === 'transcribing' ? 'not-allowed' : 'pointer',
               padding: 'var(--space-2)',
               display: 'flex',
               alignItems: 'center',
@@ -166,12 +160,12 @@ export default function ChatInput({ onVoiceModeChange, voiceHook }: ChatInputPro
               opacity: isStreaming ? 0.5 : 1,
             }}
             onMouseEnter={(e) => {
-              if (!isStreaming && !voice.isRecording && !voice.isTranscribing) {
+              if (!isStreaming && voice.state === 'idle') {
                 e.currentTarget.style.color = 'var(--color-text)';
               }
             }}
             onMouseLeave={(e) => {
-              if (!voice.isRecording && !voice.isTranscribing) {
+              if (voice.state === 'idle') {
                 e.currentTarget.style.color = 'var(--color-text-muted)';
               }
             }}

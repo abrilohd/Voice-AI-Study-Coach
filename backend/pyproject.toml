@@ -29,8 +29,7 @@ dependencies = [
     "voyageai>=0.5.0",
     "pypdf>=5.1.0",
     "aiofiles>=25.1.0",
-    "openai-whisper>=20250625",
-    "pydub>=0.25.1",
+    "elevenlabs>=1.14.0",
 ]
 
 [project.optional-dependencies]
